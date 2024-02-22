@@ -1,0 +1,171 @@
+---
+title:  'An analysis of 3D shapes of cities'
+subtitle: 'INFO 698: Capstone Project'
+author:
+- name: Student -  H M Abdul Fattah
+  affiliation: Graduate Student, School of Information, University of Arizona, Tucson, AZ
+- name: Advisor -  Dr. Cristian Román-Palacios
+  affiliation: Assistant Professor, School of Information, University of Arizona, Tucson, AZ
+tags: [R, RStudio]
+output: html_document
+---
+
+# Intall & Load the libraries
+
+```{r message=FALSE}
+
+# Include the libraries you want to install
+libs <- c(
+    "tidyverse", "sf", "geodata",
+    "terra", "classInt", "rayshader", "dplyr", "utils", 
+    "stars", "raster", "giscoR", "tidyterra"
+)
+
+installed_libs <- libs %in% rownames(
+    installed.packages()
+)
+
+if (any(installed_libs == F)) {
+    install.packages(
+        libs[!installed_libs]
+    )
+}
+
+invisible(lapply(
+    libs,
+    library,
+    character.only = T
+))
+
+```
+
+# Download Cities Shapefile if not present in directory
+```{r}
+# Define file name and folder path
+file_name <- "ne_10m_urban_areas_landscan.shp"
+folder_path <- "../data/07_cities_shapefile"
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_path)) {
+  dir.create(folder_path)
+}
+
+# Check if the file exists in the folder
+if (!file.exists(file.path(folder_path, file_name))) {
+  # If not, download the zip file
+  url <- "https://stacks.stanford.edu/file/druid:yk247bg4748/data_EPSG_4326.zip"
+  download.file(url, destfile = file.path(folder_path, "data_EPSG_4326.zip"))
+  
+  # Set a timeout of 10 seconds before unzipping
+  Sys.sleep(10)
+  
+  # Unzip the file
+  unzip(zipfile = file.path(folder_path, "data_EPSG_4326.zip"), exdir = folder_path)
+}
+```
+
+# Load the cities shapefile
+```{r}
+file_name <- "ne_10m_urban_areas_landscan.shp"
+folder_path <- "../data/07_cities_shapefile"
+
+# Read the shapefile
+world_city_map <- st_read(file.path(folder_path, file_name))
+```
+# City names stored in a list
+```{r}
+city_names <- unique(world_city_map$name_conve)
+city_names_list <- as.list(city_names)
+
+# Check if a city is present in 'city_names_list'
+# 'Tucson' %in% city_names_list
+```
+
+```{r}
+counter <- 0
+for (city_name in city_names_list) {
+  print(city_name)
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  #ggplot() + 
+  #  geom_sf(data = filtered_data)
+  
+  counter <- counter + 1
+  if (counter >= 1) {
+    break  # Break the loop when counter reaches 5
+  }
+}
+```
+```{r}
+ggplot() + 
+    geom_sf(data = city_sf)
+```
+
+# Download GHSL data
+
+```{r}
+# Define file name and folder path
+file_name <- "GHS_BUILT_H.zip"
+folder_path <- "../data/08_cities_height"
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_path)) {
+  dir.create(folder_path)
+}
+
+# Check if the file exists in the folder
+if (!file.exists(file.path(folder_path, file_name))) {
+  # If not, download the zip file
+  url <- "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss/V1-0/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss_V1_0.zip"
+  
+  download.file(url, destfile = file.path(folder_path, "GHS_BUILT_H.zip"))
+  
+  # Set a timeout of 300 seconds before unzipping
+  options(timeout = 300)
+  
+  # Unzip the file
+  unzip(zipfile = file.path(folder_path, "GHS_BUILT_H.zip"), exdir = folder_path)
+}
+```
+
+# Load GHSL data
+```{r}
+tif_file = "../data/08_cities_height/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss_V1_0.tif"
+
+building_h <- terra::rast(tif_file)
+```
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
