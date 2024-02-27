@@ -81,28 +81,6 @@ city_names_list <- as.list(city_names)
 # 'Tucson' %in% city_names_list
 ```
 
-```{r}
-counter <- 0
-for (city_name in city_names_list) {
-  print(city_name)
-  
-  city_sf <- world_city_map %>%
-    filter(name_conve %in% city_name)
-  
-  #ggplot() + 
-  #  geom_sf(data = filtered_data)
-  
-  counter <- counter + 1
-  if (counter >= 1) {
-    break  # Break the loop when counter reaches 5
-  }
-}
-```
-```{r}
-ggplot() + 
-    geom_sf(data = city_sf)
-```
-
 # Download GHSL data
 
 ```{r}
@@ -136,18 +114,142 @@ tif_file = "../data/08_cities_height/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3s
 
 building_h <- terra::rast(tif_file)
 ```
-```
 
-```{r}
+# Iterate over cities + save png file
+```{r message=FALSE}
+counter <- 0
+n <- 1 # number of cities
 
-```
+for (city_name in city_names_list) {
+  #print(city_name)
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+    
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    #convert to terra friendly format
+    terra::vect(city_sf), 
+    # crop the inside
+    snap = "in", 
+    # remove everything except city_sf
+    mask = T
+  )
+  
+  # Set a timeout of 5 seconds 
+  options(timeout = 5)
+  
+  # terra::aggregate to reduce dim
+  city_height_agg <- city_height |>
+    terra::aggregate(
+        fact = 3
+    )
+  
+  # Set a timeout of 5 seconds 
+  options(timeout = 5)
+    
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
 
-```{r}
-
-```
-
-```{r}
-
+  # Print the dimension of the dataframe
+  print(dim(city_height_df))
+  
+  # Print minimum and maximum values of 'height' column in the same line
+  cat("Min height:", min(city_height_df$height), ", Max height:", 
+      max(city_height_df$height), "\n")
+  
+  # Calculate breaks and colors
+  breaks <- classInt::classIntervals(city_height_df$height, n = 5, 
+                                     style = "fisher")$brks
+  cols <- c("white", "gray90", "gray70", "gray50", "gray30")
+  texture <- colorRampPalette(cols, bias = 2)(6)
+  
+  # Create a GGPLOT2 object
+  plot_each_city <- ggplot(city_height_df) +
+    geom_raster(aes(x = x, y = y, fill = height)) +
+    scale_fill_gradientn(name = "height (m)", colors = texture, 
+                         breaks = round(breaks, 0)) +
+    coord_sf(crs = 4326) +
+    guides(fill = guide_legend(direction = "vertical", keyheight = unit(5, "mm"),
+                               keywidth = unit(5, "mm"), title.position = "top", 
+                               label.position = "right", title.hjust = .5, 
+                               label.hjust = .5, ncol = 1, byrow = FALSE)) +
+    theme_minimal() +
+    theme(axis.line = element_blank(), axis.title.x = element_blank(), 
+          axis.title.y = element_blank(),
+          axis.text.x = element_blank(), axis.text.y = element_blank(), 
+          legend.position = "right",
+          legend.title = element_text(size = 11, color = "grey10"),
+          legend.text = element_text(size = 10, color = "grey10"),
+          panel.grid.major = element_line(color = "white"),
+          panel.grid.minor = element_line(color = "white"),
+          plot.background = element_rect(fill = "white", color = NA),
+          legend.background = element_rect(fill = "white", color = NA),
+          panel.border = element_rect(fill = NA, color = "white"),
+          plot.margin = unit(c(t = 0, r = 0, b = 0, l = 0), "lines"))
+  
+  # Plot the scene using rayshader
+  rayshader::plot_gg(
+    ggobj = plot_each_city,
+    width = 4,
+    height = 7,
+    scale = 150,
+    solid = FALSE,
+    soliddepth = 0,
+    shadow = TRUE,
+    shadow_intensity = 0.99,
+    shadowdepth = 0,
+    offset_edges = FALSE,
+    sunangle = 315,
+    window.size = c(1000, 800),
+    zoom = 0.44,
+    phi = 30,
+    theta = 0, # rotation angle
+    multicore = TRUE
+  )
+  
+  # Output folder
+  out_folder = "../results/figures/"
+  
+  # Low quality image
+  # Render the snapshot directly to a PNG file
+  
+  #rayshader::render_snapshot(
+  #  filename = paste0(out_folder, city_name, "-height-2018.png"),
+  #  width = 3000,
+  #  height = 3000
+  #)
+  
+  # High Quality image
+  # Render the scene 
+  rayshader::render_highquality(
+    filename = paste0(out_folder, city_name, "-height-2018.png"),
+    preview = TRUE,
+    interactive = FALSE,
+    light = TRUE,
+    lightdirection = c(315, 310, 315, 310),
+    lightintensity = c(1000, 1500, 150, 100),
+    lightaltitude = c(15, 15, 80, 80),
+    ground_material = rayrender::microfacet(roughness = 0.6),
+    width = 700,
+    height = 700
+  )
+  
+  # Close the plot
+  rgl::close3d()
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
 ```
 
 ```{r}
