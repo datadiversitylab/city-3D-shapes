@@ -146,6 +146,20 @@ for (city_name in city_names_list) {
         fact = 3
     )
   
+  # Output Folder
+  output_folder <- "../results/city_rasters/"
+
+  # Check if the output folder exists, if not, create it
+  if (!file.exists(output_folder)) {
+    dir.create(output_folder, recursive = TRUE)
+  }
+
+  # Specify the file path where we want to save the raster
+  output_file <- paste(output_folder, city_name, ".tif", sep = "")
+
+  # Write the raster to a GeoTIFF file
+  writeRaster(city_height_agg, filename = output_file, overwrite = TRUE)
+  
   # Set a timeout of 5 seconds 
   options(timeout = 5)
     
