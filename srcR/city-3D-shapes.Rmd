@@ -18,7 +18,8 @@ output: html_document
 libs <- c(
     "tidyverse", "sf", "geodata",
     "terra", "classInt", "rayshader", "dplyr", "utils", 
-    "stars", "raster", "giscoR", "tidyterra"
+    "stars", "raster", "giscoR", "tidyterra", "plotly", "gridExtra", "fitdistrplus", "e1071", 
+    "diptest", "rnaturalearth"
 )
 
 installed_libs <- libs %in% rownames(
@@ -244,7 +245,7 @@ for (city_name in city_names_list) {
   # High Quality image
   # Render the scene 
   rayshader::render_highquality(
-    filename = paste0(out_folder, city_name, "-height-2018.png"),
+    filename = paste0(out_folder, city_name, "-height-map-2018.png"),
     preview = TRUE,
     interactive = FALSE,
     light = TRUE,
@@ -267,6 +268,403 @@ for (city_name in city_names_list) {
 ```
 
 ```{r}
+# Density plot of building heights
+
+counter <- 0
+n <- 5 # number of cities
+
+for (city_name in city_names_list) {
+  #print(city_name)
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+    
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    #convert to terra friendly format
+    terra::vect(city_sf), 
+    # crop the inside
+    snap = "in", 
+    # remove everything except city_sf
+    mask = T
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  new_df <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+
+  # Create a Scatter plot
+  p <- ggplot(merged_df, aes(x = height, y = area)) +
+    geom_point(color = "black", alpha = 0.5) +
+    ggtitle("Scatter Plot of Building Heights and Area") +
+    xlab("Height") +
+    ylab("Area") +
+    theme_minimal()
+  
+  print(p)
+  
+  # Create a KDE plot
+  p <- ggplot(new_df, aes(x = height)) +
+    geom_density(fill = "skyblue", color = "black") +
+    ggtitle("Density Plot of Building Heights") +
+    xlab("Height") +
+    ylab("Density") +
+    theme_minimal() +
+    theme(panel.grid = element_blank())
+  
+  print(p)
+  
+  # Compute density estimates
+  density <- density(new_df$height)
+  
+  # Reverse the sign of density values
+  density$y <- -density$y
+  
+  # Create a KDE plot with density values as negative
+  p <- ggplot(data.frame(x = density$x, y = density$y), aes(x, y)) +
+    geom_area(fill = "skyblue", color = "black", alpha = 0.5) +
+    ggtitle("Density Plot of Building Heights (Mirrored)") +
+    xlab("Height") +
+    ylab("Density (Negative)") +
+    theme_minimal()
+  
+  print(p)
+  
+  new_df$height <- round(new_df$height, 2)
+  
+  # Compute density estimates for positive and negative values
+  density_positive <- density(new_df$height)
+  density_negative <- density(new_df$height)
+  
+  # Reverse the sign of the negative density values
+  density_negative$y <- -density_negative$y
+  
+  # Combine density values into a single dataset
+  density_combined <- data.frame(
+    height = density_positive$x,
+    positive_density = density_positive$y,
+    negative_density = density_negative$y
+  )
+  
+  # Create a plot of positive and negative density values with respect to height
+  p <- ggplot(density_combined, aes(x = height)) +
+    geom_area(aes(y = positive_density, fill = "Positive"), color = "skyblue", linetype = "solid") +
+    geom_area(aes(y = negative_density, fill = "Negative"), color = "skyblue", linetype = "solid") +
+    ggtitle(paste("Density Plot of Building Heights for city : ", city_name)) +
+    theme_minimal() +
+    coord_flip() +
+    scale_fill_manual(values = c("Positive" = "skyblue", "Negative" = "skyblue")) + 
+    guides(fill = FALSE) +  # Hide the legend
+    theme(
+      axis.title.x = element_blank(),  # Remove x-axis title
+      axis.title.y = element_blank(),  # Remove y-axis title
+      panel.grid.major.x = element_blank(),  # Remove major grid lines on x-axis
+      panel.grid.minor.x = element_blank(),  # Remove minor grid lines on x-axis
+      panel.grid.major.y = element_blank(),  # Remove major grid lines on y-axis
+      panel.grid.minor.y = element_blank()  # Remove minor grid lines on y-axis
+    )
+  
+  print(p)
+  
+  # Remove leading and trailing whitespace from the city name
+  city_name <- trimws(city_name)
+
+  # Save the plot as a .png file without labels or background
+  ggsave(paste("../results/figures/", city_name, "-area-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
+
+```
+
+```{r}
+# Draw the city using plotly
+
+counter <- 0
+n <- 1
+
+for (city_name in city_names_list) {
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  city_height <- terra::crop(
+    building_h,
+    terra::vect(city_sf), 
+    snap = "in", 
+    mask = TRUE
+  )
+  
+  city_height_df <- as.data.frame(city_height, xy = TRUE, na.rm = TRUE)
+  names(city_height_df)[3] <- "height"
+  
+  # Convert 'height' column to numeric
+  city_height_df$height <- as.numeric(as.character(city_height_df$height))
+  
+  # Get unique x and y values
+  unique_x <- sort(unique(city_height_df$x))
+  unique_y <- sort(unique(city_height_df$y))
+  
+  # Create a matrix to store height values
+  city_height_matrix <- matrix(NA, nrow = length(unique_x), ncol = length(unique_y))
+  
+  # Fill the matrix with height values
+  for (i in 1:length(unique_x)) {
+    for (j in 1:length(unique_y)) {
+      city_height_matrix[i, j] <- mean(city_height_df$height[city_height_df$x == unique_x[i] & city_height_df$y == unique_y[j]])
+    }
+  }
+  
+  # Create a 3D surface plot
+  p2 <- plot_ly(z = ~city_height_matrix, type = "surface") %>%
+    layout(scene = list(
+      xaxis = list(title = "X"),
+      yaxis = list(title = "Y"),
+      zaxis = list(title = "Height")
+    ))
+  
+  print(p2)
+  
+  # Save the plot as a .png file using kaleido
+  #plotly::plotly_json(p2, width = 800, height = 600, output = "3d_surface_plot.json")
+  #kaleido(p2, file = "3d_surface_plot.png", format = "png")
+  #orca(p2, file = "3d_surface_plot.png", executable = "C:/Users/ual-laptop/AppData/Roaming/npm/orca")
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
+```
+
+```{r}
+
+counter <- 0
+n <- 1 # number of cities
+
+for (city_name in city_names_list) {
+  #print(city_name)
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+    
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    #convert to terra friendly format
+    terra::vect(city_sf), 
+    # crop the inside
+    snap = "in", 
+    # remove everything except city_sf
+    mask = T
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  #city_area_df$area_km2 <- city_area_df$area / 10^6
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  #print(head(merged_df, 2))
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  new_df <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+  
+  # Create a KDE plot
+  p <- ggplot(new_df, aes(x = height)) +
+    geom_density(fill = "skyblue", color = "black") +
+    ggtitle("Density Plot of Building Heights") +
+    xlab("Height") +
+    ylab("Density") +
+    theme_minimal()
+  
+  print(p)
+  
+  # Round 'height' and 'area' to 3 decimal points
+  new_df$height <- round(new_df$height, 3)
+  new_df$area <- round(new_df$area, 3)
+  
+  # Calculate the frequency of area for each height value
+  #freq_data <- aggregate(area ~ height, data = new_df, FUN = length)
+  
+  # Calculate the frequency of area for each height value
+  freq_data <- aggregate(area ~ height, data = new_df, FUN = function(x) c(length(x), sum(x)))
+  
+  #print(freq_data)
+  print(head(freq_data$area))
+  print(head(freq_data$area[,1]))
+  print(head(freq_data$area[,2]))
+  
+  print(freq_data$area[,1][1])
+  print(freq_data$area[,2][1])
+  
+  # Convert 'area' values to square kilometers (km²)
+  freq_data$area_km2 <- freq_data$area[,2] / 10^6  # Assuming 'area' values are in square meters
+  
+  # Create a KDE plot
+  p <- ggplot(freq_data, aes(x = height, y = area_km2)) +
+    geom_density_2d() +
+    ggtitle("Density Plot of Area with Respect to Height") +
+    xlab("Height") +
+    ylab("Area (km²)") +
+    theme_minimal()
+  
+  # Print the plot
+  print(p)
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
+
+```
+
+```{r}
+# Find skew, mean, modality
+
+counter <- 0
+n <- 2 # number of cities
+
+for (city_name in city_names_list) {
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    terra::vect(city_sf), 
+    snap = "in", 
+    mask = T
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  new_df <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+
+  # Create a Scatter plot
+  p <- ggplot(merged_df, aes(x = height, y = area)) +
+    geom_point(color = "black", alpha = 0.5) +
+    ggtitle("Scatter Plot of Building Heights and Area") +
+    xlab("Height") +
+    ylab("Area") +
+    theme_minimal()
+  
+  # Define breaks for y-axis based on the range of the data
+  y_min <- min(merged_df$area)
+  y_max <- max(merged_df$area)
+  num_breaks <- 4  # You can adjust the number of breaks as needed
+  y_axis_breaks <- seq(y_min, y_max, length.out = num_breaks)  
+  
+  print(p)
+  
+  # Calculate mean height
+  mean_height <- mean(new_df$height, na.rm = TRUE)
+  
+  # Create a KDE plot
+  p <- ggplot(new_df, aes(x = height)) +
+    geom_density(fill = "skyblue") +
+    ggtitle("Density Plot of Building Heights") +
+    xlab("Height") +
+    ylab("Density") +
+    theme_minimal() + 
+    geom_vline(xintercept = mean_height, linetype = "dotted", color = "green", size = 1.5)
+  
+  # Calculate kernel density estimate
+  density_estimate <- density(new_df$height)
+  
+  # Find the x value corresponding to the maximum density (mode)
+  mode_x <- density_estimate$x[which.max(density_estimate$y)]
+  
+  # Add vertical line for mode
+  p <- p + geom_vline(xintercept = mode_x, linetype = "dashed", color = "red", size = 1.5)
+  
+  # Calculate skewness
+  skew <- skewness(new_df$height)
+  print(paste("Skewness:", skew))
+  
+  # Calculate dip statistic
+  dip <- dip.test(new_df$height)$p.value
+  print(paste("Dip Statistic:", dip))
+  
+  # Create legend text
+  legend_text <- paste("mean = ", round(mean_height, 2),
+                       "\nskew = ", round(skew, 2),
+                       "\ndip = ", round(dip, 2))
+  
+  # Add annotation for legend
+  p <- p + annotate("text", x = Inf, y = Inf, label = legend_text, 
+                    hjust = 1, vjust = 1, size = 3, color = "black")
+  
+  p <- p + theme(panel.grid = element_blank())
+
+  print(p)
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
 
 ```
 
@@ -275,13 +673,59 @@ for (city_name in city_names_list) {
 ```
 
 ```{r}
+counter <- 0
+n <- 2 # number of cities
 
-```
-
-```{r}
-
-```
-
-```{r}
-
+for (city_name in city_names_list) {
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    terra::vect(city_sf), 
+    snap = "in", 
+    mask = T
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  # Construct the filename with the city name
+  #filename <- paste0("../data/height_vs_area_data_for_city_", city_name, ".csv")
+  # Save merged_df as a CSV file
+  #write.csv(merged_df, filename, row.names = FALSE)
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  new_df <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+  
+  p <- ggplot(merged_df) + 
+    geom_area(aes(y = area, x = height)) +
+    theme_minimal()
+  
+  print(p)
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
 ```
