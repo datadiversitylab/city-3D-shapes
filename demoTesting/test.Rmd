@@ -1,0 +1,70 @@
+```{r}
+library(ggplot2)
+library(dplyr)
+
+charts.data <- read.csv("copper-data-for-tutorial.csv")
+
+# View the updated dataset
+head(charts.data)
+```
+
+```{r}
+head(area_vs_height_data)
+```
+
+```{r}
+# with fill component
+p2 <- ggplot() + geom_area(aes(y = export, x = year, fill=product), data = charts.data,
+                           stat="identity")
+p2
+```
+
+```{r}
+# without fill component
+p2 <- ggplot() + geom_area(aes(y = export, x = year), data = charts.data,
+                           stat="identity")
+p2
+```
+
+
+## Area vs Height Dataset
+
+```{r}
+
+area_vs_height_data <- read.csv("height_vs_area_data_for_city_Aalborg.csv")
+
+p <- ggplot(area_vs_height_data) + 
+    geom_area(aes(y = area, x = height)) +
+    theme_minimal()
+  
+print(p)
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
