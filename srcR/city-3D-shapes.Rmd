@@ -531,6 +531,156 @@ for (city_name in city_names_list) {
 
 ```
 
+# Calculate mean, skewness, modality, classificaiton label
+```{r}
+counter <- 0
+n <- 10 # number of cities
+
+for (city_name in city_names_list) {
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    terra::vect(city_sf), 
+    snap = "in", 
+    mask = T
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  area_vs_height_data <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+  
+  # Calculate mean height
+  mean_height <- mean(area_vs_height_data$height, na.rm = TRUE)
+  
+  # Calculate skewness
+  skew <- skewness(area_vs_height_data$height)
+  print(paste("Skewness: ", skew))
+  
+  # Calculate dip statistic
+  dip <- dip.test(area_vs_height_data$height)$p.value
+  print(paste("Dip Statistic: ", dip))
+  
+  # Calculate modality
+  modality <- ifelse(dip > 0.001, "Unimodal ", "Multimodal ")
+  print(paste("Modality: ", modality))
+  
+  # Continent 
+  city_df <- world_city_map[world_city_map$name_conve == city_name, ]
+  city_continent_name <- city_df$Continent
+  
+  # Calculate Class
+  class <- ""
+  if (dip > 0.001)
+  {
+    if (skew > 0) {
+      # Unimodal right skew
+      class <- "Pyramid" 
+    } else if (skew < 0) {
+      # Unimodal left skew
+      class <- "Inverse Pyramid" 
+    } else {
+      # Unimodal with no skew
+      class <- "Diamond"
+    }
+  }
+  else
+  {
+    class <- "Hourglass"
+  }
+  
+  # Round the height values by 2 decimals
+  area_vs_height_data$height <- round(area_vs_height_data$height, 1)
+  
+  # Convert area from m^2 to km^2, conversion: 1 square kilometer = 1,000,000 square meters
+  area_vs_height_data$area <- area_vs_height_data$area / 1000000  
+  
+  # Aggregate the areas at each unique rounded height value
+  aggregated_area_data <- aggregate(area ~ height, data = area_vs_height_data, FUN = sum)
+
+  p <- ggplot(aggregated_area_data) + 
+    geom_area(aes(y = area, x = height)) +
+    theme_minimal() +
+    geom_vline(xintercept = mean_height, linetype = "dotted", color = "green", size = 1.5)
+  
+  # Create legend text
+  legend_text <- paste(city_continent_name, 
+                       "\nclass = ", class,
+                       "\nskew = ", round(skew, 2),
+                       "\ndip = ", round(dip, 2),
+                       "\nmean = ", round(mean_height, 2),
+                       "\n", modality)
+  
+  # Add annotation for legend
+  p <- p + annotate("text", x = Inf, y = Inf, label = legend_text, 
+                    hjust = 1, vjust = 1, size = 3, color = "black")
+  
+  p <- p + theme(panel.grid = element_blank())
+  
+  print(p)
+  
+  # Combine density values into a single dataset
+  area_combined <- data.frame(
+    height = aggregated_area_data$height,
+    positive_area = aggregated_area_data$area,
+    negative_area = -1 * aggregated_area_data$area
+  )
+  
+  # Create a plot of positive and negative density values with respect to height
+  p <- ggplot(area_combined, aes(x = height)) +
+    geom_area(aes(y = positive_area, fill = "Positive"), color = "skyblue", linetype = "solid") +
+    geom_area(aes(y = negative_area, fill = "Negative"), color = "skyblue", linetype = "solid") +
+    ggtitle(paste("Density Plot of Building Heights for city : ", 'city_name')) +
+    theme_minimal() +
+    coord_flip() +
+    scale_fill_manual(values = c("Positive" = "skyblue", "Negative" = "skyblue")) + 
+    guides(fill = FALSE) +  # Hide the legend
+    theme(
+      axis.title.x = element_blank(),  # Remove x-axis title
+      axis.title.y = element_blank(),  # Remove y-axis title
+      panel.grid.major.x = element_blank(),  # Remove major grid lines on x-axis
+      panel.grid.minor.x = element_blank(),  # Remove minor grid lines on x-axis
+      panel.grid.major.y = element_blank(),  # Remove major grid lines on y-axis
+      panel.grid.minor.y = element_blank()  # Remove minor grid lines on y-axis
+    )
+  
+  #print(p)
+  
+  # Remove leading and trailing whitespace from the city name
+  city_name <- trimws(city_name)
+
+  # Save the plot as a .png file without labels or background
+  #ggsave(paste("../results/figures/", city_name, "-area-shape.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
+  
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
+
+```
 
 ```{r}
 
