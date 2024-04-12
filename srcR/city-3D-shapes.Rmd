@@ -14,12 +14,12 @@ output: html_document
 
 ```{r message=FALSE}
 
-# Include the libraries you want to install
+# Include the libraries that are needed to be installed
 libs <- c(
     "tidyverse", "sf", "geodata",
     "terra", "classInt", "rayshader", "dplyr", "utils", 
     "stars", "raster", "giscoR", "tidyterra", "plotly", "gridExtra", "e1071", 
-    "diptest"
+    "diptest", "xtable"
 )
 
 installed_libs <- libs %in% rownames(
@@ -182,7 +182,8 @@ tif_file = "../data/08_cities_height/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3s
 building_h <- terra::rast(tif_file)
 ```
 
-# Iterate over cities + save png file
+# Iterate over cities + save png file 
+# Warning: Takes time to render for all cities (parameter: n controls the number of cities)
 ```{r message=FALSE}
 counter <- 0
 n <- 1 # number of cities
@@ -303,7 +304,7 @@ for (city_name in city_names_list) {
   # Render the snapshot directly to a PNG file
   
   #rayshader::render_snapshot(
-  #  filename = paste0(out_folder, city_name, "-height-2018.png"),
+  #  filename = paste0(out_folder, city_name, "-3D-map.png"),
   #  width = 3000,
   #  height = 3000
   #)
@@ -311,7 +312,7 @@ for (city_name in city_names_list) {
   # High Quality image
   # Render the scene 
   rayshader::render_highquality(
-    filename = paste0(out_folder, city_name, "-height-map-2018.png"),
+    filename = paste0(out_folder, city_name, "-3D-map-2018.png"),
     preview = TRUE,
     interactive = FALSE,
     light = TRUE,
@@ -333,7 +334,11 @@ for (city_name in city_names_list) {
 }
 ```
 
-# Density plot of building heights
+# Density plot
+# X axis is building heights
+# Y axis is the frequency of area (area is calculated by cellSize function)
+# [Simiar to height vs area]
+# Note: I am keeping this chunk of code for reference or future use
 ```{r}
 
 counter <- 0
@@ -379,16 +384,6 @@ for (city_name in city_names_list) {
   
   # Remove 'x' and 'y' columns from merged dataframe
   new_df <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
-
-  # Create a Scatter plot
-  p <- ggplot(merged_df, aes(x = height, y = area)) +
-    geom_point(color = "black", alpha = 0.5) +
-    ggtitle("Scatter Plot of Building Heights and Area") +
-    xlab("Height") +
-    ylab("Area") +
-    theme_minimal()
-  
-  print(p)
   
   # Create a KDE plot
   p <- ggplot(new_df, aes(x = height)) +
@@ -399,7 +394,7 @@ for (city_name in city_names_list) {
     theme_minimal() +
     theme(panel.grid = element_blank())
   
-  print(p)
+  #print(p)
   
   # Compute density estimates
   density <- density(new_df$height)
@@ -415,7 +410,7 @@ for (city_name in city_names_list) {
     ylab("Density (Negative)") +
     theme_minimal()
   
-  print(p)
+  #print(p)
   
   new_df$height <- round(new_df$height, 2)
   
@@ -437,7 +432,7 @@ for (city_name in city_names_list) {
   p <- ggplot(density_combined, aes(x = height)) +
     geom_area(aes(y = positive_density, fill = "Positive"), color = "skyblue", linetype = "solid") +
     geom_area(aes(y = negative_density, fill = "Negative"), color = "skyblue", linetype = "solid") +
-    ggtitle(paste("Density Plot of Building Heights for city : ", city_name)) +
+    ggtitle(paste("Area vs Building Heights for city :", city_name)) +
     theme_minimal() +
     coord_flip() +
     scale_fill_manual(values = c("Positive" = "skyblue", "Negative" = "skyblue")) + 
@@ -457,7 +452,7 @@ for (city_name in city_names_list) {
   city_name <- trimws(city_name)
 
   # Save the plot as a .png file without labels or background
-  ggsave(paste("../results/figures/", city_name, "-area-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
+  #ggsave(paste("../results/figures/", city_name, "-area-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
   
   counter <- counter + 1
   if (counter >= n) {
@@ -468,6 +463,7 @@ for (city_name in city_names_list) {
 ```
 
 # Draw the city using plotly
+# Just a simple 3D represenation of building heights. This plot is interactive 
 ```{r}
 
 counter <- 0
@@ -514,11 +510,6 @@ for (city_name in city_names_list) {
   
   print(p2)
   
-  # Save the plot as a .png file using kaleido
-  #plotly::plotly_json(p2, width = 800, height = 600, output = "3d_surface_plot.json")
-  #kaleido(p2, file = "3d_surface_plot.png", format = "png")
-  #orca(p2, file = "3d_surface_plot.png", executable = "C:/Users/ual-laptop/AppData/Roaming/npm/orca")
-  
   counter <- counter + 1
   if (counter >= n) {
     break  # Break the loop when counter reaches n
@@ -535,6 +526,9 @@ for (city_name in city_names_list) {
 ```{r}
 counter <- 0
 n <- 10 # number of cities
+
+# Create an empty list to store tables
+table_list <- list()
 
 for (city_name in city_names_list) {
   city_sf <- world_city_map %>%
@@ -666,13 +660,26 @@ for (city_name in city_names_list) {
       panel.grid.minor.y = element_blank()  # Remove minor grid lines on y-axis
     )
   
-  #print(p)
+  print(p)
   
   # Remove leading and trailing whitespace from the city name
   city_name <- trimws(city_name)
+  
+  # Create a dataframe with the summary information
+  summary_df <- data.frame(
+    City = city_name,
+    Continent = city_continent_name,
+    Class = class,
+    Skewness = skew,
+    Dip_Statistic = dip,
+    Mean_Height = mean_height
+  )
 
   # Save the plot as a .png file without labels or background
-  #ggsave(paste("../results/figures/", city_name, "-area-shape.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
+  ggsave(paste("../results/figures/", city_name, "-area-vs-height-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "transparent")
+  
+  # Add the summary dataframe to the list for generating pdf later on
+  table_list[[counter + 1]] <- summary_df
   
   counter <- counter + 1
   if (counter >= n) {
@@ -680,9 +687,62 @@ for (city_name in city_names_list) {
   }
 }
 
+# Combine all tables into one dataframe
+combined_table <- do.call(rbind, table_list)
+
+# Write the table to a LaTeX file
+latex_table <- xtable(combined_table, caption = "Summary Table", label = "tab:summary_table")
+
+# Save the LaTeX code to a file
+latex_file <- "../docs/combined_summary.tex"
+print(latex_table, file = latex_file)
+
 ```
 
 ```{r}
+# Define the preamble and postamble
+preamble <- "\\documentclass{article}\n\\usepackage{booktabs}\n\\begin{document}\n"
+postamble <- "\\end{document}\n"
+
+# Read the original .tex file
+latex_file <- "../docs/combined_summary.tex"
+tex_content <- readLines(latex_file)
+
+# Find the index where the table content starts and ends
+start_index <- grep("\\\\begin\\{table\\}", tex_content)
+end_index <- grep("\\\\end\\{table\\}", tex_content)
+
+# Extract the table content
+table_content <- tex_content[(start_index):(end_index)]
+
+# Insert the preamble, table content, and postamble
+modified_tex_content <- c(preamble, table_content, postamble)
+
+# Write the modified content to the same .tex file
+writeLines(modified_tex_content, latex_file)
+
+# Open the .tex file in RStudio
+rstudioapi::navigateToFile(latex_file)
+
+# Wait for a few seconds to ensure the file is opened
+Sys.sleep(3)
+
+# Compile the .tex file into a PDF
+rstudioapi::executeCommand("compilePDF")
+
+# Wait for the compilation process to finish
+Sys.sleep(3)
+
+# Path to the output PDF file
+pdf_file <- tools::file_path_sans_ext(latex_file)  # Remove the .tex extension
+pdf_file <- paste0(pdf_file, ".pdf")
+
+# Check if the PDF file exists
+if (file.exists(pdf_file)) {
+  message("PDF file successfully generated: ", pdf_file)
+} else {
+  warning("PDF file generation failed.")
+}
 
 ```
 
