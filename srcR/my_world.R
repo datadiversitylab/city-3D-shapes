@@ -4,6 +4,9 @@ hello_world <- function() {
 
 hello_world()
 
+# Set CRAN mirror
+options(repos = "https://cloud.r-project.org")
+
 # Include the libraries that are needed to be installed
 libs <- c(
   "tidyverse", "sf", "geodata",
