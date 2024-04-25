@@ -11,11 +11,10 @@ output: html_document
 ---
 
 # Intall & Load the libraries
-
 ```{r message=FALSE}
 
 # Set CRAN mirror
-options(repos = "https://cloud.r-project.org")
+options(repos = "http://cran.us.r-project.org")
 
 # Include the libraries that are needed to be installed
 libs <- c(
@@ -43,26 +42,14 @@ invisible(lapply(
 
 ```
 
-# Download Cities Shapefile if not present in directory
+# Unzip Cities Shapefile if not present in directory
 ```{r}
 # Define file name and folder path
 file_name <- "ne_10m_urban_areas_landscan.shp"
 folder_path <- "../data/07_cities_shapefile"
 
-# Check if the folder exists, if not, create it
-if (!file.exists(folder_path)) {
-  dir.create(folder_path)
-}
-
 # Check if the file exists in the folder
 if (!file.exists(file.path(folder_path, file_name))) {
-  # If not, download the zip file
-  url <- "https://stacks.stanford.edu/file/druid:yk247bg4748/data_EPSG_4326.zip"
-  download.file(url, destfile = file.path(folder_path, "data_EPSG_4326.zip"))
-  
-  # Set a timeout of 10 seconds before unzipping
-  Sys.sleep(10)
-  
   # Unzip the file
   unzip(zipfile = file.path(folder_path, "data_EPSG_4326.zip"), exdir = folder_path)
 }
@@ -151,30 +138,20 @@ options(timeout = 5)
 world_city_map$Continent <- result
 ```
 
-# Download GHSL data
 
+# Unzip GHSL data
 ```{r}
 # Define file name and folder path
-file_name <- "GHS_BUILT_H.zip"
+file_name <- "GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss_V1_0.tif"
 folder_path <- "../data/08_cities_height"
-
-# Check if the folder exists, if not, create it
-if (!file.exists(folder_path)) {
-  dir.create(folder_path)
-}
 
 # Check if the file exists in the folder
 if (!file.exists(file.path(folder_path, file_name))) {
-  # If not, download the zip file
-  url <- "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss/V1-0/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss_V1_0.zip"
-  
-  download.file(url, destfile = file.path(folder_path, "GHS_BUILT_H.zip"))
-  
-  # Set a timeout of 300 seconds before unzipping
-  options(timeout = 300)
-  
   # Unzip the file
   unzip(zipfile = file.path(folder_path, "GHS_BUILT_H.zip"), exdir = folder_path)
+  
+  # Set a timeout of 300 seconds after unzipping
+  options(timeout = 300)
 }
 ```
 
@@ -335,6 +312,9 @@ for (city_name in city_names_list) {
     break  # Break the loop when counter reaches n
   }
 }
+
+# Set a timeout for the system to execute the next command
+options(timeout = 30)
 ```
 
 # Density plot
@@ -463,6 +443,8 @@ for (city_name in city_names_list) {
   }
 }
 
+# Set a timeout for the system to execute the next command
+options(timeout = 30)
 ```
 
 # Draw the city using plotly
@@ -518,6 +500,9 @@ for (city_name in city_names_list) {
     break  # Break the loop when counter reaches n
   }
 }
+
+# Set a timeout for the system to execute the next command
+options(timeout = 30)
 ```
 
 
@@ -526,9 +511,10 @@ for (city_name in city_names_list) {
 ```
 
 # Calculate mean, skewness, modality, classificaiton label
+# Save the area vs height plot for cities
 ```{r}
 counter <- 0
-n <- 2 # number of cities
+n <- 3 # number of cities
 
 Pyramid_Count <- 0
 Inverse_Pyramid_Count <- 0
@@ -603,18 +589,22 @@ for (city_name in city_names_list) {
     class <- ""
     if (dip > 0.001)
     {
-      if (skew > 0) {
+      if (skew > 0.499) {
         # Unimodal right skew
         class <- "Pyramid"
         Pyramid_Count <- Pyramid_Count + 1
-      } else if (skew < 0) {
+      } else if (skew < -0.499) {
         # Unimodal left skew
         class <- "Inverse Pyramid" 
         Inverse_Pyramid_Count <- Inverse_Pyramid_Count + 1
+        
+        inverse <- TRUE
       } else {
         # Unimodal with no skew
         class <- "Diamond"
         Diamond_Count <- Diamond_Count + 1
+        
+        diamond <- TRUE
       }
     }
     else
@@ -661,9 +651,9 @@ for (city_name in city_names_list) {
   
   p <- p + theme(panel.grid = element_blank())
   
-  print(p)
+  #print(p)
   
-  #ggsave(paste("../results/figures/", city_name, "-plot-a.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg="white")
+  ggsave(paste("../results/figures/folder1/", city_name, "-plot.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg="white")
   
   # Combine density values into a single dataset
   area_combined <- data.frame(
@@ -690,7 +680,7 @@ for (city_name in city_names_list) {
       panel.grid.minor.y = element_blank()  # Remove minor grid lines on y-axis
     )
   
-  print(p)
+  #print(p)
   
   # Remove leading and trailing whitespace from the city name
   city_name <- trimws(city_name)
@@ -707,7 +697,7 @@ for (city_name in city_names_list) {
   
   # Save the plot as a .png file without labels or background
   #bg = "transparent"
-  ggsave(paste("../results/figures/", city_name, "-area-vs-height-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "white")
+  ggsave(paste("../results/figures/folder2/", city_name, "-area-vs-height-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "white")
   
   # Add the summary dataframe to the list for generating pdf later on
   table_list[[counter + 1]] <- summary_df
@@ -717,7 +707,6 @@ for (city_name in city_names_list) {
     break  # Break the loop when counter reaches n
   }
 }
-
 
 # Combine all tables into one dataframe
 combined_table <- do.call(rbind, table_list)
@@ -731,10 +720,172 @@ print(Unknown_Count)
 
 ```
 
+# Save statistical measures to a csv format
+```{r}
+counter <- 0
+n <- 3 # number of cities
+
+Pyramid_Count <- 0
+Inverse_Pyramid_Count <- 0
+Diamond_Count <- 0
+Hourglass_Count <- 0
+Unknown_Count <- 0
+
+# Create an empty list to store tables
+table_list <- list()
+
+# Define the city names that we want to skip for now
+# skip_cities <- c('Bathurst1', 'Bathurst2', 'Beijing', 'Bhagalpur', 'Cadiz1', 'Cadiz2', 'Calcutta')
+
+for (city_name in city_names_list) {
+  
+  counter <- counter + 1
+  if (counter > n) {
+    break  # Break the loop when counter reaches n
+  }
+  #else if (counter < 701) {
+  #  next
+  #}
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+  
+  #print(city_name)
+  
+  # Specify a different output file name
+  output_file <- paste0("city_height_", city_name, ".tif")
+  
+  tryCatch(
+    {
+      # crop city height from building_h object
+      city_height <- terra::crop(
+        building_h,
+        terra::vect(city_sf), 
+        snap = "in", 
+        mask = TRUE, 
+        overwrite = TRUE
+      )
+    },
+    error = function(e) {
+      # Print the error message
+      print(paste("Error occurred for city:", city_name))
+      print(e)
+      # Skip the current iteration
+      next
+    }
+  )
+  
+  # convert raster data to dataframe
+  city_height_df = as.data.frame(
+    city_height, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  names(city_height_df)[3] <- "height"
+  
+  # Calculate area covered by each cell in city_height raster
+  cell_size <- cellSize(city_height)
+  
+  city_area_df = as.data.frame(
+    cell_size, 
+    xy = T, 
+    na.rm = T
+  )
+  
+  # Merge city_height_df and city_area_df based on x and y coordinates
+  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
+  
+  # Remove 'x' and 'y' columns from merged dataframe
+  area_vs_height_data <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
+  
+  # Calculate mean height
+  mean_height <- mean(area_vs_height_data$height, na.rm = TRUE)
+  
+  # Calculate skewness
+  skew <- skewness(area_vs_height_data$height)
+  #print(paste("Skewness: ", skew))
+  
+  # Calculate dip statistic
+  dip <- dip.test(area_vs_height_data$height)$p.value
+  #print(paste("Dip Statistic: ", dip))
+  
+  # Calculate modality
+  modality <- ifelse(dip > 0.001, "Unimodal ", "Multimodal ")
+  #print(paste("Modality: ", modality))
+  
+  # Continent 
+  city_df <- world_city_map[world_city_map$name_conve == city_name, ]
+  city_continent_name <- city_df$Continent
+  
+  # Calculate Class
+  class <- ""
+  
+  # Check if skew is not NA
+  if (!is.na(skew)) {
+    # Calculate Class
+    class <- ""
+    if (dip > 0.001)
+    {
+      if (skew > 0.499) {
+        # Unimodal right skew
+        class <- "Pyramid"
+        Pyramid_Count <- Pyramid_Count + 1
+      } else if (skew < -0.499) {
+        # Unimodal left skew
+        class <- "Inverse Pyramid" 
+        Inverse_Pyramid_Count <- Inverse_Pyramid_Count + 1
+      } else {
+        # Unimodal with no skew
+        class <- "Diamond"
+        Diamond_Count <- Diamond_Count + 1
+      }
+    }
+    else
+    {
+      class <- "Hourglass"
+      Hourglass_Count <- Hourglass_Count + 1
+    }
+  } else {
+    # If skew is NA, assign appropriate values
+    skew <- 0
+    modality <- "Unknown"
+    class <- "Unknown"
+    Unknown_Count <- Unknown_Count + 1
+  }
+  
+  # Remove leading and trailing whitespace from the city name
+  city_name <- trimws(city_name)
+  
+  # Create a dataframe with the summary information
+  summary_df <- data.frame(
+    City = city_name,
+    Continent = city_continent_name,
+    Class = class,
+    Skewness = skew,
+    Dip_Statistic = dip,
+    Mean_Height = mean_height
+  )
+  
+  # Add the summary dataframe to the list for generating pdf later on
+  table_list[[counter + 1]] <- summary_df
+}
+
+# Combine all tables into one dataframe
+combined_table <- do.call(rbind, table_list)
+
+print('Classification Type Count: ')
+print(Pyramid_Count)
+print(Inverse_Pyramid_Count)
+print(Diamond_Count)
+print(Hourglass_Count)
+print(Unknown_Count)
+```
+
 # Save to CSV
 ```{r}
 # Define the file path for the CSV
-csv_file <- "../docs/combined_summary.csv"
+csv_file <- "../docs/combined_summary_1000.csv"
 
 # Write the combined table to a CSV file
 write.csv(combined_table, file = csv_file, row.names = FALSE)

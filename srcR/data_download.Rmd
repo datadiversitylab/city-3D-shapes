@@ -1,0 +1,112 @@
+---
+title:  'An analysis of 3D shapes of cities'
+subtitle: 'INFO 698: Capstone Project'
+author:
+- name: Student -  H M Abdul Fattah
+  affiliation: Graduate Student, School of Information, University of Arizona, Tucson, AZ
+- name: Advisor -  Dr. Cristian Román-Palacios
+  affiliation: Assistant Professor, School of Information, University of Arizona, Tucson, AZ
+tags: [R, RStudio]
+output: html_document
+---
+
+# Intall & Load the libraries
+```{r message=FALSE}
+
+# Set CRAN mirror
+options(repos = "http://cran.us.r-project.org")
+
+# Include the libraries that are needed to be installed
+libs <- c(
+    "tidyverse", "sf", "geodata",
+    "terra", "classInt", "rayshader", "dplyr", "utils", 
+    "stars", "raster", "giscoR", "tidyterra", "plotly", "gridExtra", "e1071", 
+    "diptest", "xtable"
+)
+
+installed_libs <- libs %in% rownames(
+    installed.packages()
+)
+
+if (any(installed_libs == F)) {
+    install.packages(
+        libs[!installed_libs]
+    )
+}
+
+invisible(lapply(
+    libs,
+    library,
+    character.only = T
+))
+
+```
+
+# Download Cities Shapefile if not present in directory
+```{r}
+# Define file name and folder path
+file_name <- "data_EPSG_4326.zip"
+folder_path <- "../data/07_cities_shapefile"
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_path)) {
+  dir.create(folder_path)
+}
+
+# Check if the file exists in the folder
+if (!file.exists(file.path(folder_path, file_name))) {
+  # If not, download the zip file
+  url <- "https://stacks.stanford.edu/file/druid:yk247bg4748/data_EPSG_4326.zip"
+  download.file(url, destfile = file.path(folder_path, "data_EPSG_4326.zip"))
+  
+  # Set a timeout of 10 seconds before unzipping
+  Sys.sleep(10)
+}
+```
+
+# Download GHSL data
+```{r}
+# Define file name and folder path
+file_name <- "GHS_BUILT_H.zip"
+folder_path <- "../data/08_cities_height"
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_path)) {
+  dir.create(folder_path)
+}
+
+# Check if the file exists in the folder
+if (!file.exists(file.path(folder_path, file_name))) {
+  # If not, download the zip file
+  url <- "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/GHS_BUILT_H_GLOBE_R2023A/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss/V1-0/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3ss_V1_0.zip"
+  
+  download.file(url, destfile = file.path(folder_path, "GHS_BUILT_H.zip"))
+  
+  # Set a timeout of 300 seconds before unzipping
+  options(timeout = 300)
+}
+```
+
+# downloaded continents shapefile
+```{r}
+# this shape file is already on github. If not: 
+# download the "label areas" from:
+# url: https://www.naturalearthdata.com/downloads/50m-physical-vectors/50m-physical-labels/
+# the downloaded zip file should be inside folder: '09_continents_shapefile'
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
