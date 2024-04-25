@@ -171,6 +171,9 @@ n <- 1 # number of cities
 for (city_name in city_names_list) {
   #print(city_name)
   
+  # Remove this break if you want to run this block of code
+  break
+  
   city_sf <- world_city_map %>%
     filter(name_conve %in% city_name)
     
@@ -265,12 +268,12 @@ for (city_name in city_names_list) {
     scale = 150,
     solid = FALSE,
     soliddepth = 0,
-    shadow = TRUE,
-    shadow_intensity = 0.99,
-    shadowdepth = 0,
+    #shadow = TRUE,
+    #shadow_intensity = 0.99,
+    #shadowdepth = 0,
     offset_edges = FALSE,
     sunangle = 315,
-    window.size = c(1000, 800),
+    window.size = c(1000, 800), #remove this line if issues while running on server
     zoom = 0.44,
     phi = 30,
     theta = 0, # rotation angle
@@ -313,8 +316,6 @@ for (city_name in city_names_list) {
   }
 }
 
-# Set a timeout for the system to execute the next command
-options(timeout = 30)
 ```
 
 # Density plot
@@ -329,6 +330,9 @@ n <- 5 # number of cities
 
 for (city_name in city_names_list) {
   #print(city_name)
+  
+  # Remove this break if you want to run this block of code
+  break
   
   city_sf <- world_city_map %>%
     filter(name_conve %in% city_name)
@@ -444,7 +448,7 @@ for (city_name in city_names_list) {
 }
 
 # Set a timeout for the system to execute the next command
-options(timeout = 30)
+#options(timeout = 30)
 ```
 
 # Draw the city using plotly
@@ -457,6 +461,9 @@ n <- 1
 for (city_name in city_names_list) {
   city_sf <- world_city_map %>%
     filter(name_conve %in% city_name)
+  
+  # Remove this break if you want to run this block of code
+  break
   
   city_height <- terra::crop(
     building_h,
@@ -524,6 +531,19 @@ Unknown_Count <- 0
 
 # Create an empty list to store tables
 table_list <- list()
+
+folder_1 <- "../results/figures/folder1"
+folder_2 <- "../results/figures/folder2"
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_1)) {
+  dir.create(folder_1)
+}
+
+# Check if the folder exists, if not, create it
+if (!file.exists(folder_2)) {
+  dir.create(folder_2)
+}
 
 for (city_name in city_names_list) {
   city_sf <- world_city_map %>%
