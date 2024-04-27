@@ -162,17 +162,13 @@ tif_file = "../data/08_cities_height/GHS_BUILT_H_AGBH_E2018_GLOBE_R2023A_4326_3s
 building_h <- terra::rast(tif_file)
 ```
 
-# Iterate over cities + save png file 
-# Warning: Takes time to render for all cities (parameter: n controls the number of cities)
+# Write/Save raster file for each cities 
 ```{r message=FALSE}
 counter <- 0
-n <- 1 # number of cities
+n <- 5 # number of cities
 
 for (city_name in city_names_list) {
   #print(city_name)
-  
-  # Remove this break if you want to run this block of code
-  break
   
   city_sf <- world_city_map %>%
     filter(name_conve %in% city_name)
@@ -213,6 +209,49 @@ for (city_name in city_names_list) {
   
   # Set a timeout of 5 seconds 
   options(timeout = 5)
+
+  counter <- counter + 1
+  if (counter >= n) {
+    break  # Break the loop when counter reaches n
+  }
+}
+
+```
+
+# Iterate over cities + save png file 
+# Warning: Takes time to render for all cities (parameter: n controls the number of cities)
+```{r message=FALSE}
+counter <- 0
+n <- 1 # number of cities
+
+for (city_name in city_names_list) {
+  #print(city_name)
+  
+  # Remove this break if you want to run this block of code
+  break
+  
+  city_sf <- world_city_map %>%
+    filter(name_conve %in% city_name)
+    
+  # crop city height from building_h object
+  city_height <- terra::crop(
+    building_h,
+    #convert to terra friendly format
+    terra::vect(city_sf), 
+    # crop the inside
+    snap = "in", 
+    # remove everything except city_sf
+    mask = T
+  )
+  
+  # Set a timeout of 5 seconds 
+  options(timeout = 5)
+  
+  # terra::aggregate to reduce dim
+  city_height_agg <- city_height |>
+    terra::aggregate(
+        fact = 3
+    )
     
   # convert raster data to dataframe
   city_height_df = as.data.frame(
@@ -318,11 +357,11 @@ for (city_name in city_names_list) {
 
 ```
 
+# Note: I am keeping this chunk of code for reference or future use
 # Density plot
 # X axis is building heights
 # Y axis is the frequency of area (area is calculated by cellSize function)
 # [Simiar to height vs area]
-# Note: I am keeping this chunk of code for reference or future use
 ```{r}
 
 counter <- 0
@@ -447,8 +486,6 @@ for (city_name in city_names_list) {
   }
 }
 
-# Set a timeout for the system to execute the next command
-#options(timeout = 30)
 ```
 
 # Draw the city using plotly
@@ -521,7 +558,8 @@ options(timeout = 30)
 # Save the area vs height plot for cities
 ```{r}
 counter <- 0
-n <- 3 # number of cities
+n <- 15 # number of cities
+# n <- 6018 (all cities)
 
 Pyramid_Count <- 0
 Inverse_Pyramid_Count <- 0
@@ -545,16 +583,40 @@ if (!file.exists(folder_2)) {
   dir.create(folder_2)
 }
 
+# Define the city names that we want to skip for now
+skip_cities <- c('Bathurst1', 'Bathurst2', 'Beijing', 'Bhagalpur', 
+                 'Cadiz1', 'Cadiz2', 'Calcutta', 'Chengdu', 'Chongqing', 'Columbia1', 'Columbia2', 
+                 'Delhi', 'Dhaka', 'Gorakhpur', 'Huainan', 'Jakarta', 'Jinan', 'Kanpur', 
+                 'New Delhi', 'Newcastle', 'Tianjin', 'Varanasi', 'Zhengzhou')
+
 for (city_name in city_names_list) {
   city_sf <- world_city_map %>%
     filter(name_conve %in% city_name)
   
-  # crop city height from building_h object
-  city_height <- terra::crop(
-    building_h,
-    terra::vect(city_sf), 
-    snap = "in", 
-    mask = T
+  # Getting some unexpected errors for these cities inside 'terra::crop' function
+  # that's why skipping them for now. 
+  if (city_name %in% skip_cities) {
+    next
+  }
+  
+  tryCatch(
+    {
+      # crop city height from building_h object
+      city_height <- terra::crop(
+        building_h,
+        terra::vect(city_sf), 
+        snap = "in", 
+        mask = TRUE, 
+        overwrite = TRUE
+      )
+    },
+    error = function(e) {
+      # Print the error message
+      print(paste("Error occurred for city:", city_name))
+      print(e)
+      # Skip the current iteration
+      next
+    }
   )
   
   # convert raster data to dataframe
@@ -673,7 +735,7 @@ for (city_name in city_names_list) {
   
   #print(p)
   
-  ggsave(paste("../results/figures/folder1/", city_name, "-plot.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg="white")
+  ggsave(paste("../results/figures/folder1/", city_name, "-area-vs-height-plot.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg="white")
   
   # Combine density values into a single dataset
   area_combined <- data.frame(
@@ -717,7 +779,7 @@ for (city_name in city_names_list) {
   
   # Save the plot as a .png file without labels or background
   #bg = "transparent"
-  ggsave(paste("../results/figures/folder2/", city_name, "-area-vs-height-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "white")
+  ggsave(paste("../results/figures/folder2/", city_name, "-3D-map.png"), plot = p, width = 8, height = 6, units = "in", dpi = 300, bg = "white")
   
   # Add the summary dataframe to the list for generating pdf later on
   table_list[[counter + 1]] <- summary_df
@@ -742,170 +804,8 @@ print(Unknown_Count)
 
 # Save statistical measures to a csv format
 ```{r}
-counter <- 0
-n <- 3 # number of cities
-
-Pyramid_Count <- 0
-Inverse_Pyramid_Count <- 0
-Diamond_Count <- 0
-Hourglass_Count <- 0
-Unknown_Count <- 0
-
-# Create an empty list to store tables
-table_list <- list()
-
-# Define the city names that we want to skip for now
-# skip_cities <- c('Bathurst1', 'Bathurst2', 'Beijing', 'Bhagalpur', 'Cadiz1', 'Cadiz2', 'Calcutta')
-
-for (city_name in city_names_list) {
-  
-  counter <- counter + 1
-  if (counter > n) {
-    break  # Break the loop when counter reaches n
-  }
-  #else if (counter < 701) {
-  #  next
-  #}
-  
-  city_sf <- world_city_map %>%
-    filter(name_conve %in% city_name)
-  
-  #print(city_name)
-  
-  # Specify a different output file name
-  output_file <- paste0("city_height_", city_name, ".tif")
-  
-  tryCatch(
-    {
-      # crop city height from building_h object
-      city_height <- terra::crop(
-        building_h,
-        terra::vect(city_sf), 
-        snap = "in", 
-        mask = TRUE, 
-        overwrite = TRUE
-      )
-    },
-    error = function(e) {
-      # Print the error message
-      print(paste("Error occurred for city:", city_name))
-      print(e)
-      # Skip the current iteration
-      next
-    }
-  )
-  
-  # convert raster data to dataframe
-  city_height_df = as.data.frame(
-    city_height, 
-    xy = T, 
-    na.rm = T
-  )
-  
-  names(city_height_df)[3] <- "height"
-  
-  # Calculate area covered by each cell in city_height raster
-  cell_size <- cellSize(city_height)
-  
-  city_area_df = as.data.frame(
-    cell_size, 
-    xy = T, 
-    na.rm = T
-  )
-  
-  # Merge city_height_df and city_area_df based on x and y coordinates
-  merged_df <- merge(city_height_df, city_area_df, by = c("x", "y"))
-  
-  # Remove 'x' and 'y' columns from merged dataframe
-  area_vs_height_data <- merged_df[, !(names(merged_df) %in% c("x", "y"))]
-  
-  # Calculate mean height
-  mean_height <- mean(area_vs_height_data$height, na.rm = TRUE)
-  
-  # Calculate skewness
-  skew <- skewness(area_vs_height_data$height)
-  #print(paste("Skewness: ", skew))
-  
-  # Calculate dip statistic
-  dip <- dip.test(area_vs_height_data$height)$p.value
-  #print(paste("Dip Statistic: ", dip))
-  
-  # Calculate modality
-  modality <- ifelse(dip > 0.001, "Unimodal ", "Multimodal ")
-  #print(paste("Modality: ", modality))
-  
-  # Continent 
-  city_df <- world_city_map[world_city_map$name_conve == city_name, ]
-  city_continent_name <- city_df$Continent
-  
-  # Calculate Class
-  class <- ""
-  
-  # Check if skew is not NA
-  if (!is.na(skew)) {
-    # Calculate Class
-    class <- ""
-    if (dip > 0.001)
-    {
-      if (skew > 0.499) {
-        # Unimodal right skew
-        class <- "Pyramid"
-        Pyramid_Count <- Pyramid_Count + 1
-      } else if (skew < -0.499) {
-        # Unimodal left skew
-        class <- "Inverse Pyramid" 
-        Inverse_Pyramid_Count <- Inverse_Pyramid_Count + 1
-      } else {
-        # Unimodal with no skew
-        class <- "Diamond"
-        Diamond_Count <- Diamond_Count + 1
-      }
-    }
-    else
-    {
-      class <- "Hourglass"
-      Hourglass_Count <- Hourglass_Count + 1
-    }
-  } else {
-    # If skew is NA, assign appropriate values
-    skew <- 0
-    modality <- "Unknown"
-    class <- "Unknown"
-    Unknown_Count <- Unknown_Count + 1
-  }
-  
-  # Remove leading and trailing whitespace from the city name
-  city_name <- trimws(city_name)
-  
-  # Create a dataframe with the summary information
-  summary_df <- data.frame(
-    City = city_name,
-    Continent = city_continent_name,
-    Class = class,
-    Skewness = skew,
-    Dip_Statistic = dip,
-    Mean_Height = mean_height
-  )
-  
-  # Add the summary dataframe to the list for generating pdf later on
-  table_list[[counter + 1]] <- summary_df
-}
-
-# Combine all tables into one dataframe
-combined_table <- do.call(rbind, table_list)
-
-print('Classification Type Count: ')
-print(Pyramid_Count)
-print(Inverse_Pyramid_Count)
-print(Diamond_Count)
-print(Hourglass_Count)
-print(Unknown_Count)
-```
-
-# Save to CSV
-```{r}
 # Define the file path for the CSV
-csv_file <- "../docs/combined_summary_1000.csv"
+csv_file <- "../docs/combined_summary_all.csv"
 
 # Write the combined table to a CSV file
 write.csv(combined_table, file = csv_file, row.names = FALSE)
