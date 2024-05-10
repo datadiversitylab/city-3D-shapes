@@ -59,27 +59,49 @@ This repo has the following basic structure.
 # References
 
 [1] Urban heat island, Wikipedia, Available at https://en.wikipedia.org/wiki/Urban_heat_island
+
 [2] Urban heat island effects depend on a city’s layout, Available at https://news.mit.edu/2018/urban-heat-island-effects-depend-city-layout-0222
+
 [3] City module - City cluster and urban heat islands (Europe), Available at https://www.pik-potsdam.de/cigrasp-2/city-module/heat-island-cluster/index.html
+
 [4] Mackres, E., Pool, J. R., Shabou, S., Wong, T., Anderson, J., Gillespie, C., & Alexander, S. New Data Dashboard Helps Cities Build Urban Resilience in a Changing Climate.
+
 [5] Hughes, H. B., Breshears, D. D., Cook, K. J., Keith, L., & Burger, J. R. (2023). Household energy use response to extreme heat with a biophysical model of temperature regulation: An Arizona case study. PLOS Climate, 2(4), e0000110.
+
 [6] Elsen, PR., & Tingley, MW. (2015). Global mountain topography and the fate of montane species under climate change. Nature Climate Change, 5(8), 772-776.
+
 [7] Kelso, N.V. and Patterson, T. (2012). World Urban Areas, LandScan, 1:10 million (2012). Made with Natural Earth, online at http://www.naturalearthdata.com
+
 [8] Pesaresi, Martino; Politis, Panagiotis (2023): GHS-BUILT-H R2023A - GHS building height, derived from AW3D30, SRTM30, and Sentinel2 composite (2018). European Commission, Joint Research Centre (JRC) [Dataset] doi: 10.2905/85005901-3A49-48DD-9D19-6261354F56FE
+
 [9] sf: Simple Features for R, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/sf/index.html
+
 [10] terra: Spatial Data Analysis, The Comprehensive R Archive Network, URL:  https://cran.r-project.org/web/packages/terra/index.html
+
 [11] rayshader: Create Maps and Visualize Data in 2D and 3D, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/rayshader/index.html
+
 [12] cellSize: Area covered by each raster cell, The Comprehensive R Archive Network, URL: https://search.r-project.org/CRAN/refmans/terra/html/cellSize.html
+
 [13] Physical Labels, Natural Earth, Avaialable at: https://www.naturalearthdata.com/downloads/50m-physical-vectors/50m-physical-labels/ 
+
 [14] tidyverse: Easily Install and Load the Tidyverse, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/tidyverse/index.html
+
 [15] dplyr: Introduction to dplyr, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html 
+
 [16] raster: Geographic Data Analysis and Modeling, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/raster/index.html 
+
 [17] giscoR: Download Map Data from GISCO API - Eurostat, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/giscoR/index.html 
+
 [18] gridExtra: Miscellaneous Functions for "Grid" Graphics, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/gridExtra/index.html 
+
 [19] e1071: Misc Functions of the Department of Statistics, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/e1071/index.html 
+
 [20] diptest: Hartigan's Dip Test Statistic for Unimodality, The Comprehensive R Archive Network, URL: https://cran.r-project.org/web/packages/diptest/index.html 
+
 [21] City module - City cluster and urban heat islands (Europe), URL: https://www.pik-potsdam.de/cigrasp-2/city-module/heat-island-cluster/index.html 
+
 [22] Li, Y., Schubert, S., Kropp, J. P., & Rybski, D. (2020). On the influence of density and morphology on the Urban Heat Island intensity. Nature communications, 11(1), 2647.
+
 [23] Hu, Y., Dai, Z., & Guldmann, J. M. (2020). Modeling the impact of 2D/3D urban indicators on the urban heat island over different seasons: A boosted regression tree approach. Journal of environmental management, 266, 110424.
 
 ### Acknowledgment
